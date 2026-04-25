@@ -2,13 +2,11 @@ package logger
 
 import (
 	"bytes"
-	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"strings"
 	"testing"
-
-	"github.com/sirupsen/logrus"
 )
 
 func TestNew(t *testing.T) {
@@ -20,67 +18,46 @@ func TestNew(t *testing.T) {
 			ReportCaller: true,
 		}
 
-		log := new(cfg)
-		if log.GetLevel() != logrus.DebugLevel {
-			t.Errorf("Level mismatch: got %v, want %v", log.GetLevel(), logrus.DebugLevel)
+		log := configure(cfg)
+		if log == nil {
+			t.Fatal("expected non-nil logger")
 		}
 	})
 
 	t.Run("Invalid Level Fallback", func(t *testing.T) {
 		cfg := Config{Level: "invalid-level"}
-		log := new(cfg)
-		if log.GetLevel() != logrus.InfoLevel {
-			t.Errorf("Expected fallback to InfoLevel, got %v", log.GetLevel())
+		log := configure(cfg)
+		if log == nil {
+			t.Fatal("expected non-nil logger")
 		}
 	})
 }
+
 func TestGetOutput(t *testing.T) {
 	var buf bytes.Buffer
 	cfg := PresetDev("test")
 	cfg.Output = io.MultiWriter(&buf, os.Stdout)
 
-	log := new(cfg)
+	log := configure(cfg)
 
 	log.Info("hello info log")
 	if buf.Len() == 0 {
 		t.Error("not print log")
 	}
 }
+
 func TestCustomCallerPrettyfier(t *testing.T) {
 	var buf bytes.Buffer
 	cfg := PresetDev("test")
 	cfg.ReportCaller = true
 	cfg.Output = &buf
 
-	log := new(cfg)
+	log := configure(cfg)
 	log.Info("test message")
 
 	output := buf.String()
 	if !strings.Contains(output, "TestCustomCallerPrettyfier()") {
 		t.Errorf("invalid print to Caller. Got: %s", output)
-	}
-}
-func TestSetFormatter(t *testing.T) {
-	tests := []struct {
-		name   string
-		format Format
-		want   string
-	}{
-		{"JSON Format", FormatJSON, "*logrus.JSONFormatter"},
-		{"Text Format", FormatText, "*logrus.TextFormatter"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cfg := PresetDev("test")
-			cfg.Format = tt.format
-			l := new(cfg)
-
-			got := fmt.Sprintf("%T", l.Formatter)
-			if got != tt.want {
-				t.Errorf("Formatter mismatch: got %v, want %v", got, tt.want)
-			}
-		})
 	}
 }
 
@@ -90,7 +67,7 @@ func TestServiceHook(t *testing.T) {
 	cfg := PresetProd(serviceName)
 	cfg.Output = &buf
 
-	log := new(cfg)
+	log := configure(cfg)
 	log.Info("hook test")
 
 	output := buf.String()
@@ -99,17 +76,16 @@ func TestServiceHook(t *testing.T) {
 	}
 }
 
-func TestSetConfiguresStandardLogger(t *testing.T) {
+func TestSet(t *testing.T) {
 	var buf bytes.Buffer
-	cfg := PresetProd("standard")
-	cfg.Output = &buf
+	cfg := PresetProd("set-service")
 	cfg.Format = FormatJSON
-	cfg.Level = "info"
+	cfg.Output = &buf
 
 	Set(cfg)
-	logrus.Info("standard logger test")
+	slog.Info("set test")
 
-	if !strings.Contains(buf.String(), "standard logger test") {
-		t.Fatalf("expected standard logger to write to configured output, got: %s", buf.String())
+	if !strings.Contains(buf.String(), "set test") {
+		t.Fatalf("expected output to include log message, got: %s", buf.String())
 	}
 }

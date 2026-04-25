@@ -10,14 +10,17 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// create logrus and settings
+// Set configures the global (standard) logrus logger.
+// After calling Set, package-level calls like logrus.Info(...) use this config.
 func Set(cfg Config) {
-	_ = new(cfg)
+	_ = configure(logrus.StandardLogger(), cfg)
 }
 
 func new(cfg Config) *logrus.Logger {
-	l := logrus.New()
+	return configure(logrus.New(), cfg)
+}
 
+func configure(l *logrus.Logger, cfg Config) *logrus.Logger {
 	l.SetOutput(getOutput(cfg.Output))
 	lv, err := logrus.ParseLevel(strings.ToLower(cfg.Level))
 	if err != nil {

@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	ulog.Set(ulog.PresetProd("mockup-service"))
+	ulog.Set(ulog.PresetDev("mockup-service"))
 
 	log.Info("INFO")
 	log.Debug("DEBU")
